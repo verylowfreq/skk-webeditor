@@ -2,7 +2,7 @@
 
 import { AutoTokenizer, AutoModel } from '@huggingface/transformers';
 
-const MODEL_ID = 'cfsdwe/static-embedding-japanese-ONNX-for-js';
+const MODEL_ID = 'Xenova/multilingual-e5-small';
 let loadedTokenizer = null;
 let loadedModel = null;
 
@@ -122,26 +122,25 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-function makeCandidateWindow({ left, candidate, okuriKana, right }) {
-  return `${left.slice(-12)}${candidate}${okuriKana || ''}${right.slice(0, 12)}`;
-}
-
 async function rerank(payload) {
   const { candidates, left, right, okuriKana } = payload;
   const t0 = Date.now();
 
-  wlog('log', `リランク開始: ${candidates.slice(0, 5).join('/')} | 左="${left.slice(-8)}" 右="${right.slice(0, 8)}"`);
+  const rightSnippet = right ? right.slice(0, 8) : '';
+  wlog('log', `リランク開始: ${candidates.slice(0, 5).join('/')} | 左="${left.slice(-8)}" 右="${rightSnippet}"`);
 
-  const windows = candidates.map(c => makeCandidateWindow({ left, candidate: c, okuriKana, right }));
-  const contextText = `${left.slice(-12)}${right.slice(0, 12)}` || left.slice(-24) || '日本語';
-  const texts = [...windows, contextText];
+  const queryText = `query: ${left.slice(-20)}${rightSnippet ? '…' + rightSnippet : ''}`;
+  const passages = candidates.map(c => `passage: ${c}${okuriKana || ''}`);
+  const texts = [...passages, queryText];
 
   const embeddings = await embedTexts(texts);
-  const contextEmbedding = embeddings[embeddings.length - 1];
+  const queryEmbedding = embeddings[embeddings.length - 1];
+
+  wlog('log', `クエリ: "${queryText}"`);
 
   const scored = candidates.map((candidate, index) => {
-    const embScore = cosine(embeddings[index], contextEmbedding);
-    return { candidate, score: embScore, embScore, originalIndex: index, window: windows[index] };
+    const embScore = cosine(embeddings[index], queryEmbedding);
+    return { candidate, score: embScore, embScore, originalIndex: index };
   });
 
   scored.sort((a, b) => b.score - a.score);
@@ -151,7 +150,7 @@ async function rerank(payload) {
 
   return {
     ranked: scored.map(x => x.candidate),
-    debug: { modelId: MODEL_ID, timeMs, strategy: 'local-window', scores: scored },
+    debug: { modelId: MODEL_ID, timeMs, strategy: 'e5-query-passage', scores: scored },
   };
 }
 

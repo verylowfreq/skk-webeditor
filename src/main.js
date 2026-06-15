@@ -182,7 +182,7 @@ function updateDebugInfo(debug) {
   const lines = [
     `model: ${modelShort}  time: ${debug.timeMs}ms`,
     `文脈: 左${aiSettings.leftCtx}字 右${aiSettings.rightCtx}字  timeout: ${aiSettings.timeoutMs}ms`,
-    `式: score = emb (文脈コサイン類似度のみ)`,
+    `式: cosine("query: 左文脈", "passage: 候補")`,
     `${'─'.repeat(44)}`,
     ...debug.scores.slice(0, 5).map((s, i) => {
       const cand = [...s.candidate].slice(0, 4).join('');
