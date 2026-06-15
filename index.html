@@ -41,6 +41,9 @@
             placeholder="ここにテキストを入力 (Ctrl+J でかなモード)"
             aria-label="確定済みテキスト"></textarea>
 
+  <!-- Bottom edge drag handle: drag up to shrink app height above the keyboard -->
+  <div id="bottom-handle" title="ドラッグして下端を調整">···</div>
+
   <!-- Candidates row (shown only in ▼mode) -->
   <div id="candidates-row" role="listbox" aria-label="変換候補">
     <div id="candidates-list" style="display:flex;gap:4px;flex-shrink:0;"></div>
@@ -49,12 +52,10 @@
   <!-- Input line -->
   <div id="input-area" role="textbox" aria-label="入力行">
     <span id="mode-label" title="入力モード">A</span>
+    <span id="capslock-indicator" title="CapsLock ON&#10;タップで補正切替">CAPS</span>
     <span id="composition-text"></span>
     <button id="btn-mode" title="モード切替">モード</button>
   </div>
-
-  <!-- Bottom edge drag handle (drag up to move UI above keyboard) -->
-  <div id="bottom-handle" title="ドラッグして下端を調整">···</div>
 
 </div>
 

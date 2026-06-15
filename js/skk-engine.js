@@ -346,6 +346,24 @@ class SKKEngine {
       return this._cancel();
     }
 
+    if (key === 'Backspace') {
+      // Cancel conversion and delete the last char of the reading
+      this._mode = MODE.PREEDITING;
+      this._candidates = [];
+      this._candidateIdx = 0;
+      this._okuriRoman = '';
+      this._okuriKana = '';
+      this._conv.reset();
+      if (this._reading.length > 0) {
+        this._reading = this._reading.slice(0, -1);
+      }
+      if (this._reading.length === 0) {
+        this._resetToKana();
+      }
+      this._notify();
+      return { commit: null };
+    }
+
     if (key === ' ' || key === 'ArrowDown') {
       // Next candidate
       this._candidateIdx = (this._candidateIdx + 1) % this._candidates.length;

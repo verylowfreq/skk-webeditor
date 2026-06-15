@@ -18,12 +18,43 @@ const ta = () => $('confirmed-text');
 let lastValue = '';
 let lastSelStart = 0;
 
+// CapsLock state (updated on every keydown)
+let capsLockOn = false;
+// When true, letter keys are lowercased in non-ASCII modes to neutralize CapsLock
+let capsLockComp = false;
+
+function loadCapsLockComp() {
+  capsLockComp = localStorage.getItem('skkEditor_capsLockComp') === 'true';
+  updateCapsLockUI();
+}
+
+function saveCapsLockComp() {
+  localStorage.setItem('skkEditor_capsLockComp', capsLockComp);
+}
+
+function updateCapsLockUI() {
+  const el = $('capslock-indicator');
+  if (capsLockOn && capsLockComp) {
+    el.dataset.state = 'both';
+    el.textContent = 'CAPS↺';
+  } else if (capsLockOn) {
+    el.dataset.state = 'on';
+    el.textContent = 'CAPS';
+  } else if (capsLockComp) {
+    el.dataset.state = 'comp';
+    el.textContent = 'CAPS↺';
+  } else {
+    delete el.dataset.state;
+  }
+}
+
 function init() {
   dict = new Dictionary();
   engine = new SKKEngine(dict);
   engine.onChange = render;
 
   loadBottomOffset();
+  loadCapsLockComp();
   loadTextFromStorage();
   syncSnapshot();
   render();
@@ -176,6 +207,14 @@ function setupEvents() {
     cycleModeFromButton();
     focusInput();
   });
+  // CapsLock indicator toggles compensation mode on tap
+  $('capslock-indicator').addEventListener('pointerdown', e => {
+    e.preventDefault();
+    capsLockComp = !capsLockComp;
+    saveCapsLockComp();
+    updateCapsLockUI();
+    focusInput();
+  });
 }
 
 function focusInput() {
@@ -191,10 +230,21 @@ function cycleModeFromButton() {
 }
 
 function handleKeyDown(e) {
-  const key = e.key;
+  // Track CapsLock state (getModifierState reflects the post-toggle state on keydown).
+  capsLockOn = e.getModifierState('CapsLock');
+  updateCapsLockUI();
+
+  let key = e.key;
   const shift = e.shiftKey;
   const ctrl = e.ctrlKey || e.metaKey;
   const alt = e.altKey;
+
+  // CapsLock compensation: when CapsLock is on in Japanese input modes, letter keys
+  // arrive as uppercase (even without Shift), confusing roman-kana conversion.
+  // Normalize to lowercase so the engine sees the correct character.
+  if (capsLockComp && capsLockOn && engine.mode !== 'ascii') {
+    if (key.length === 1 && /[a-zA-Z]/.test(key)) key = key.toLowerCase();
+  }
 
   // Ctrl+J: enter hiragana mode from anywhere.
   if (ctrl && key === 'j') {
@@ -274,7 +324,10 @@ function handleInput(e) {
     el.setSelectionRange(lastSelStart, lastSelStart);
     for (const ch of e.data) {
       const isLetter = /[a-zA-Z]/.test(ch);
-      const shift = isLetter && ch === ch.toUpperCase();
+      // When CapsLock compensation is on, uppercase without a real Shift press
+      // should not be treated as Shift (which would trigger ▽mode).
+      const shift = isLetter && ch === ch.toUpperCase() &&
+                    !(capsLockComp && capsLockOn);
       const key = isLetter ? ch.toLowerCase() : ch;
       runEngine(key, shift, false, false);
     }
