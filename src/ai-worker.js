@@ -122,14 +122,6 @@ function cosine(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-function shapeScore(candidate) {
-  let s = 0;
-  if (/[一-鿿]/.test(candidate)) s += 0.2;
-  if (!candidate) s -= 1;
-  if (candidate.length > 12) s -= 0.1;
-  return s;
-}
-
 function makeCandidateWindow({ left, candidate, okuriKana, right }) {
   return `${left.slice(-12)}${candidate}${okuriKana || ''}${right.slice(0, 12)}`;
 }
@@ -149,10 +141,7 @@ async function rerank(payload) {
 
   const scored = candidates.map((candidate, index) => {
     const embScore = cosine(embeddings[index], contextEmbedding);
-    const dictScore = 1 / (index + 1);
-    const shape = shapeScore(candidate);
-    const score = 0.55 * embScore + 0.30 * dictScore + 0.15 * shape;
-    return { candidate, score, embScore, dictScore, shape, originalIndex: index, window: windows[index] };
+    return { candidate, score: embScore, embScore, originalIndex: index, window: windows[index] };
   });
 
   scored.sort((a, b) => b.score - a.score);

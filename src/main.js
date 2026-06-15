@@ -182,13 +182,11 @@ function updateDebugInfo(debug) {
   const lines = [
     `model: ${modelShort}  time: ${debug.timeMs}ms`,
     `文脈: 左${aiSettings.leftCtx}字 右${aiSettings.rightCtx}字  timeout: ${aiSettings.timeoutMs}ms`,
-    `式: score = 0.55×emb + 0.30×dict + 0.15×shape`,
-    `     emb=文脈類似度  dict=辞書順(1位→1.0)  shape=字形`,
+    `式: score = emb (文脈コサイン類似度のみ)`,
     `${'─'.repeat(44)}`,
     ...debug.scores.slice(0, 5).map((s, i) => {
       const cand = [...s.candidate].slice(0, 4).join('');
-      return `  ${i + 1}. ${cand.padEnd(5)} score=${s.score.toFixed(3)}` +
-             ` emb=${s.embScore.toFixed(3)} dict=${s.dictScore.toFixed(2)} shape=${s.shape.toFixed(2)}`;
+      return `  ${i + 1}. ${cand.padEnd(5)} emb=${s.embScore.toFixed(4)}`;
     }),
   ];
 
