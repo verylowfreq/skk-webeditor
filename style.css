@@ -343,6 +343,69 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
   scrollbar-width: thin;
 }
 
+/* ── AI settings panel ────────────────────────────────────────────── */
+#settings-panel {
+  flex-shrink: 0;
+  background: #111827;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+#settings-panel > summary {
+  cursor: pointer;
+  padding: 3px 8px;
+  color: var(--text-dim);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+}
+
+#settings-panel > summary::-webkit-details-marker { display: none; }
+#settings-panel[open] > summary { color: #fc8; }
+
+.setting-rows {
+  padding: 6px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-label {
+  flex-shrink: 0;
+  width: 6em;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.setting-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+  accent-color: #fc8;
+}
+
+.setting-val {
+  flex-shrink: 0;
+  width: 4.5em;
+  text-align: right;
+  color: #fc8;
+  font-size: 11px;
+}
+
+.setting-hint {
+  font-size: 10px;
+  color: #556;
+  line-height: 1.5;
+  padding-top: 2px;
+}
+
 /* ── Mobile console panel ─────────────────────────────────────────── */
 #console-panel {
   flex-shrink: 0;

@@ -66,15 +66,56 @@ function makeRerankKey() {
   ].join('|');
 }
 
+// ── AI settings ───────────────────────────────────────────────────
+
+const aiSettings = { leftCtx: 40, rightCtx: 20, timeoutMs: 300 };
+
+function loadAISettings() {
+  try {
+    const saved = localStorage.getItem('skkEditor_aiSettings');
+    if (saved) Object.assign(aiSettings, JSON.parse(saved));
+  } catch {}
+  syncSettingsUI();
+}
+
+function saveAISettings() {
+  try { localStorage.setItem('skkEditor_aiSettings', JSON.stringify(aiSettings)); } catch {}
+}
+
+function syncSettingsUI() {
+  const set = (id, val) => { const el = $(id); if (el) el.value = val; };
+  const txt = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+  set('left-ctx', aiSettings.leftCtx);   txt('left-ctx-val', aiSettings.leftCtx);
+  set('right-ctx', aiSettings.rightCtx); txt('right-ctx-val', aiSettings.rightCtx);
+  set('timeout-ms', aiSettings.timeoutMs); txt('timeout-val', aiSettings.timeoutMs);
+}
+
+function setupAISettings() {
+  const wire = (sliderId, valId, key) => {
+    const el = $(sliderId);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      aiSettings[key] = parseInt(el.value, 10);
+      const valEl = $(valId);
+      if (valEl) valEl.textContent = aiSettings[key];
+      saveAISettings();
+      lastRerankKey = ''; // force rerank with new settings
+    });
+  };
+  wire('left-ctx',   'left-ctx-val',  'leftCtx');
+  wire('right-ctx',  'right-ctx-val', 'rightCtx');
+  wire('timeout-ms', 'timeout-val',   'timeoutMs');
+}
+
 // ── Context helpers ───────────────────────────────────────────────
 
-function getLeftContext(n = 40) {
+function getLeftContext(n) {
   const el = ta();
   const pos = el.selectionStart;
   return el.value.slice(Math.max(0, pos - n), pos);
 }
 
-function getRightContext(n = 20) {
+function getRightContext(n) {
   const el = ta();
   const pos = el.selectionEnd;
   return el.value.slice(pos, pos + n);
@@ -98,8 +139,8 @@ async function maybeRerankCandidates() {
   const topCandidates = candidates.slice(0, 5);
   const restCandidates = candidates.slice(5);
 
-  const left = getLeftContext(40);
-  const right = getRightContext(20);
+  const left = getLeftContext(aiSettings.leftCtx);
+  const right = getRightContext(aiSettings.rightCtx);
 
   try {
     const result = await aiReranker.rerankWithTimeout({
@@ -108,7 +149,7 @@ async function maybeRerankCandidates() {
       reading: engine.reading,
       okuriKana: engine.okuriKana,
       candidates: topCandidates,
-      timeoutMs: 300,
+      timeoutMs: aiSettings.timeoutMs,
     });
 
     if (requestId !== rerankRequestId) return;
@@ -137,15 +178,18 @@ function updateDebugInfo(debug) {
   const el = $('debug-info');
   if (!el || !debug) return;
 
+  const modelShort = debug.modelId.split('/').pop();
   const lines = [
-    `model: ${debug.modelId}`,
-    `time:  ${debug.timeMs}ms`,
-    `strategy: ${debug.strategy}`,
-    `top candidates:`,
-    ...debug.scores.slice(0, 5).map((s, i) =>
-      `  ${i + 1}. ${s.candidate.padEnd(6)} score=${s.score.toFixed(3)}` +
-      ` emb=${s.embScore.toFixed(3)} dict=${s.dictScore.toFixed(3)} shape=${s.shape.toFixed(2)}`
-    ),
+    `model: ${modelShort}  time: ${debug.timeMs}ms`,
+    `文脈: 左${aiSettings.leftCtx}字 右${aiSettings.rightCtx}字  timeout: ${aiSettings.timeoutMs}ms`,
+    `式: score = 0.55×emb + 0.30×dict + 0.15×shape`,
+    `     emb=文脈類似度  dict=辞書順(1位→1.0)  shape=字形`,
+    `${'─'.repeat(44)}`,
+    ...debug.scores.slice(0, 5).map((s, i) => {
+      const cand = [...s.candidate].slice(0, 4).join('');
+      return `  ${i + 1}. ${cand.padEnd(5)} score=${s.score.toFixed(3)}` +
+             ` emb=${s.embScore.toFixed(3)} dict=${s.dictScore.toFixed(2)} shape=${s.shape.toFixed(2)}`;
+    }),
   ];
 
   el.textContent = lines.join('\n');
@@ -190,6 +234,9 @@ function init() {
   aiReranker = new AIReranker();
   aiReranker.onLog = (level, text) => appendLog(level, text);
   aiReranker.init();
+
+  loadAISettings();
+  setupAISettings();
 
   loadBottomOffset();
   loadCapsLockComp();

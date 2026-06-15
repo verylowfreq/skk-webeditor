@@ -64,6 +64,32 @@
     <pre id="debug-info"></pre>
   </details>
 
+  <!-- AI settings panel (collapsible) -->
+  <details id="settings-panel">
+    <summary>▶ AI設定</summary>
+    <div class="setting-rows">
+      <div class="setting-row">
+        <span class="setting-label">左文脈</span>
+        <input type="range" id="left-ctx" min="0" max="100" step="5" value="40">
+        <span class="setting-val"><span id="left-ctx-val">40</span>字</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">右文脈</span>
+        <input type="range" id="right-ctx" min="0" max="60" step="5" value="20">
+        <span class="setting-val"><span id="right-ctx-val">20</span>字</span>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">タイムアウト</span>
+        <input type="range" id="timeout-ms" min="100" max="3000" step="100" value="300">
+        <span class="setting-val"><span id="timeout-val">300</span>ms</span>
+      </div>
+      <div class="setting-hint">
+        emb=文脈類似度 dict=辞書順(1位→1.0) shape=字形<br>
+        score = 0.55×emb + 0.30×dict + 0.15×shape
+      </div>
+    </div>
+  </details>
+
   <!-- Mobile console (collapsible) -->
   <details id="console-panel">
     <summary>▶ コンソール <button id="btn-console-clear" onclick="event.preventDefault();event.stopPropagation();">クリア</button></summary>
