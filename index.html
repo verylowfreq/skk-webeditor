@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SKK Web Editor + AI</title>
+  <script type="module" crossorigin src="/skk-webeditor/assets/index-BjSOoAYx.js"></script>
+  <link rel="stylesheet" crossorigin href="/skk-webeditor/assets/index-CvRPw2eJ.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="header-title">SKK Web Editor + AI</span>
+    </div>
+    <div class="btn-row">
+      <button id="btn-save">保存</button>
+      <button id="btn-load">読込</button>
+      <button id="btn-download">DL</button>
+      <button id="btn-clear">消去</button>
+      <button id="btn-dict-load" class="btn-accent">辞書追加</button>
+      <button id="btn-dict-refresh">辞書↺</button>
+    </div>
+  </div>
+
+  <!-- Dictionary status -->
+  <div id="dict-status-bar">
+    <span id="dict-status">辞書を初期化中…</span>
+    <div id="dict-progress-wrap" style="display:none;flex:1;">
+      <progress id="dict-progress" max="100"></progress>
+    </div>
+  </div>
+
+  <!-- Confirmed text editor (real textarea: native caret / selection / scroll) -->
+  <textarea id="confirmed-text" autocomplete="off" autocorrect="off"
+            autocapitalize="none" spellcheck="false"
+            placeholder="ここにテキストを入力 (Ctrl+J でかなモード)"
+            aria-label="確定済みテキスト"></textarea>
+
+  <!-- Bottom edge drag handle -->
+  <div id="bottom-handle" title="ドラッグして下端を調整">···</div>
+
+  <!-- Candidates row (shown only in ▼mode) -->
+  <div id="candidates-row" role="listbox" aria-label="変換候補">
+    <div id="candidates-list" style="display:flex;gap:4px;flex-shrink:0;"></div>
+    <span id="ai-badge" style="display:none;" title="AIリランク済み">AI</span>
+  </div>
+
+  <!-- Input line -->
+  <div id="input-area" role="textbox" aria-label="入力行">
+    <span id="mode-label" title="入力モード">A</span>
+    <span id="capslock-indicator" title="CapsLock ON&#10;タップで補正切替">CAPS</span>
+    <span id="composition-text"></span>
+    <button id="btn-mode" title="モード切替">モード</button>
+  </div>
+
+  <!-- AI debug panel (collapsible) -->
+  <details id="debug-panel">
+    <summary id="debug-summary">▶ AIデバッグ</summary>
+    <pre id="debug-info"></pre>
+  </details>
+
+</div>
+
+<!-- Hidden file input for dictionary loading -->
+<input type="file" id="dict-file-input" accept=".L,.l,.txt,text/plain" style="display:none">
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+</body>
+</html>
