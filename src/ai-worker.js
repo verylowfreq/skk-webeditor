@@ -5,6 +5,7 @@ import { AutoTokenizer, AutoModel } from '@huggingface/transformers';
 const MODEL_ID = 'Xenova/multilingual-e5-small';
 let loadedTokenizer = null;
 let loadedModel = null;
+let _modelLoadPromise = null; // serializes concurrent load attempts
 
 function wlog(level, ...args) {
   const text = args.map(a =>
@@ -17,28 +18,47 @@ function wlog(level, ...args) {
 
 async function loadModel() {
   if (loadedTokenizer && loadedModel) return { tokenizer: loadedTokenizer, model: loadedModel };
+  if (!_modelLoadPromise) {
+    _modelLoadPromise = _doLoadModel();
+    _modelLoadPromise.catch(() => { _modelLoadPromise = null; }); // reset on failure so caller can retry
+  }
+  return _modelLoadPromise;
+}
 
+async function _doLoadModel() {
   const t0 = Date.now();
   wlog('log', 'モデルロード開始...');
 
-  loadedTokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-  wlog('log', 'トークナイザ完了');
+  const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
+  wlog('log', `トークナイザ完了 (${Date.now() - t0}ms)`);
 
-  try {
-    loadedModel = await AutoModel.from_pretrained(MODEL_ID, { dtype: 'q8' });
-    wlog('log', `モデルロード完了 q8 (${Date.now() - t0}ms)`);
-  } catch (e) {
-    wlog('warn', `q8失敗 → fp32フォールバック: ${e.message}`);
-    loadedModel = await AutoModel.from_pretrained(MODEL_ID);
-    wlog('log', `モデルロード完了 fp32 (${Date.now() - t0}ms)`);
+  // dtype:'q8' → model_quantized.onnx (~118MB)
+  // dtype:'fp32' → model.onnx (~280MB, last resort)
+  // NOTE: no-dtype default on WASM is also q8, so we must be explicit for fp32 fallback
+  let model = null;
+  for (const [dtype, label] of [['q8', 'q8/quantized ~118MB'], ['fp32', 'fp32 ~280MB']]) {
+    wlog('log', `${label} ダウンロード中...`);
+    try {
+      model = await AutoModel.from_pretrained(MODEL_ID, { dtype });
+      wlog('log', `モデルロード完了 ${label} (${Date.now() - t0}ms)`);
+      break;
+    } catch (e) {
+      wlog('warn', `${label} 失敗: ${e.message}`);
+    }
   }
 
+  if (!model) {
+    throw new Error('モデルロード失敗: q8/fp32 とも取得できませんでした');
+  }
+
+  loadedTokenizer = tokenizer;
+  loadedModel = model;
   self.postMessage({ type: 'ready' });
-  return { tokenizer: loadedTokenizer, model: loadedModel };
+  return { tokenizer, model };
 }
 
 async function embedTexts(texts) {
-  const { tokenizer, model } = await loadModel();
+  const { tokenizer, model } = await loadModel(); // returns cached or awaits in-progress load
 
   const inputs = await tokenizer(texts, {
     padding: true,
