@@ -216,15 +216,15 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
   padding: 4px 8px;
 }
 
-/* Hidden input to capture keyboard events */
+/* Hidden input — off-screen but real so mobile BT keyboards work */
 #hidden-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  position: fixed;
+  left: -9999px;
+  top: 50%;
   width: 1px;
   height: 1px;
-  top: 0;
-  left: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ── Toast ────────────────────────────────────────────────────────── */

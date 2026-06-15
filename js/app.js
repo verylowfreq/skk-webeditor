@@ -114,18 +114,20 @@ function deleteConfirmedChar() {
 function setupEvents() {
   const hiddenInput = $('hidden-input');
 
-  // Focus capture: tap on input line or anywhere below text area
-  $('input-area').addEventListener('pointerdown', e => {
-    e.preventDefault();
-    focusInput();
-  });
-
-  $('confirmed-text').addEventListener('pointerdown', e => {
-    focusInput();
-  });
+  // Focus capture: tap on input line or text area
+  $('input-area').addEventListener('pointerdown', e => { e.preventDefault(); focusInput(); });
+  $('confirmed-text').addEventListener('pointerdown', () => focusInput());
 
   hiddenInput.addEventListener('keydown', handleKeyDown);
-  hiddenInput.addEventListener('beforeinput', handleBeforeInput);
+  // 'input' fallback: fires when keydown gave key='Unidentified' (BT keyboard on mobile)
+  hiddenInput.addEventListener('input', handleInput);
+  // Auto-refocus so BT keyboard input is never lost
+  hiddenInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      const a = document.activeElement;
+      if (!a || a === document.body) focusInput();
+    }, 150);
+  });
 
   // Buttons
   $('btn-save').addEventListener('click', () => {
@@ -185,55 +187,64 @@ function cycleModeFromButton() {
   render();
 }
 
+// Flag to avoid double-processing when keydown already handled a character
+let _keyHandled = false;
+
 function handleKeyDown(e) {
   const key = e.key;
   const shift = e.shiftKey;
   const ctrl = e.ctrlKey || e.metaKey;
   const alt = e.altKey;
 
-  // Keys we handle
-  const handled = [
-    'Enter', 'Backspace', 'Escape', ' ',
-    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-  ];
+  _keyHandled = false;
 
-  // Handle Ctrl+J
   if (ctrl && key === 'j') {
     e.preventDefault();
     const result = engine.processKey('j', shift, true);
     if (result.commit) appendConfirmed(result.commit);
+    _keyHandled = true;
     return;
   }
-
   if (ctrl && key === 'g') {
     e.preventDefault();
     engine.processKey('g', shift, true);
     render();
+    _keyHandled = true;
     return;
   }
 
-  if (handled.includes(key) || (key.length === 1)) {
+  const special = ['Enter', 'Backspace', 'Escape', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+  if (special.includes(key) || key.length === 1) {
     e.preventDefault();
     processEngineKey(key, shift, ctrl, alt);
+    _keyHandled = true;
   }
+  // key==='Unidentified' (mobile BT) falls through to input event
 }
 
-function handleBeforeInput(e) {
-  // Prevent any text from actually being inserted into the hidden input
-  e.preventDefault();
+function handleInput(e) {
+  // Always clear whatever was inserted into the hidden field
+  $('hidden-input').value = '';
+
+  if (_keyHandled) return; // already handled by keydown
+
+  const data = e.data;
+  if (!data) return;
+
+  // Process each character — detect shift from uppercase
+  for (const ch of data) {
+    const isLetter = /[a-zA-Z]/.test(ch);
+    const shift = isLetter && ch === ch.toUpperCase();
+    const key = isLetter ? ch.toLowerCase() : ch;
+    processEngineKey(key, shift, false, false);
+  }
 }
 
 function processEngineKey(key, shift, ctrl, alt) {
-  const actualKey = key === ' ' ? ' ' : key;
-  const result = engine.processKey(actualKey, shift, ctrl, alt);
-
-  if (result.backspace) {
-    deleteConfirmedChar();
-  } else if (result.commit) {
-    appendConfirmed(result.commit);
-  } else {
-    render();
-  }
+  const result = engine.processKey(key, shift, ctrl, alt);
+  if (result.backspace) deleteConfirmedChar();
+  else if (result.commit) appendConfirmed(result.commit);
+  else render();
 }
 
 // ── Storage ───────────────────────────────────────────────────────
