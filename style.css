@@ -34,7 +34,7 @@ html, body {
 #app {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: calc(100dvh - var(--bottom-offset, 0px));
   max-width: 700px;
   margin: 0 auto;
 }
@@ -238,6 +238,27 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 #toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* ── Bottom edge drag handle ─────────────────────────────────────── */
+#bottom-handle {
+  flex-shrink: 0;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  touch-action: none;
+  user-select: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+#bottom-handle:active {
+  background: var(--surface2);
 }
 
 /* ── Scrollbars (desktop) ─────────────────────────────────────────── */

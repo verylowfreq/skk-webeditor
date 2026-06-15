@@ -33,6 +33,7 @@ class SKKEngine {
   get mode() { return this._mode; }
   get candidates() { return this._candidates; }
   get candidateIdx() { return this._candidateIdx; }
+  get okuriKana() { return this._okuriKana; }
 
   // Roman-kana buffer still waiting for more input (e.g. "k" before a vowel)
   get pendingRoman() { return this._conv.pending; }

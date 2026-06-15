@@ -23,10 +23,12 @@ function init() {
   engine = new SKKEngine(dict);
   engine.onChange = render;
 
+  loadBottomOffset();
   loadTextFromStorage();
   syncSnapshot();
   render();
   setupEvents();
+  setupBottomHandle();
   initDictionary();
 }
 
@@ -74,7 +76,7 @@ function render() {
     cands.forEach((c, i) => {
       const btn = document.createElement('button');
       btn.className = 'cand-btn' + (i === engine.candidateIdx ? ' selected' : '');
-      btn.textContent = (i + 1 <= 9 ? `${i + 1}.` : '') + c;
+      btn.textContent = (i + 1 <= 9 ? `${i + 1}.` : '') + c + engine.okuriKana;
       btn.addEventListener('pointerdown', e => {
         e.preventDefault();
         const result = engine.selectCandidate(i);
@@ -359,6 +361,56 @@ async function handleDictFileLoad(e) {
   const n = Object.keys(entries).length;
   $('dict-status').textContent = `辞書: ${file.name} 追加済み (+${n.toLocaleString()} 語)`;
   showToast(`辞書を追加しました (${n.toLocaleString()} 語)`);
+}
+
+// ── Bottom offset (drag handle) ───────────────────────────────────
+
+let _bottomOffset = 0;
+
+function applyBottomOffset(px) {
+  _bottomOffset = Math.max(0, Math.min(600, px));
+  document.documentElement.style.setProperty('--bottom-offset', _bottomOffset + 'px');
+}
+
+function loadBottomOffset() {
+  const saved = localStorage.getItem('skkEditor_bottomOffset');
+  applyBottomOffset(saved ? parseInt(saved, 10) : 0);
+}
+
+function saveBottomOffset() {
+  localStorage.setItem('skkEditor_bottomOffset', _bottomOffset);
+}
+
+function setupBottomHandle() {
+  const handle = $('bottom-handle');
+  let dragging = false;
+  let startY = 0;
+  let startOffset = 0;
+
+  handle.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    dragging = true;
+    startY = e.clientY;
+    startOffset = _bottomOffset;
+    handle.setPointerCapture(e.pointerId);
+  });
+
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    // Dragging up → delta negative → offset increases (UI shrinks upward)
+    const delta = startY - e.clientY;
+    applyBottomOffset(startOffset + delta);
+  });
+
+  handle.addEventListener('pointerup', e => {
+    if (!dragging) return;
+    dragging = false;
+    const delta = startY - e.clientY;
+    applyBottomOffset(startOffset + delta);
+    saveBottomOffset();
+  });
+
+  handle.addEventListener('pointercancel', () => { dragging = false; });
 }
 
 // ── Toast notification ────────────────────────────────────────────
