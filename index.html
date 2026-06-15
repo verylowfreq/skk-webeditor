@@ -7,8 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SKK Web Editor + AI</title>
-  <script type="module" crossorigin src="/skk-webeditor/assets/index-BjSOoAYx.js"></script>
-  <link rel="stylesheet" crossorigin href="/skk-webeditor/assets/index-CvRPw2eJ.css">
+  <script type="module" crossorigin src="/skk-webeditor/assets/index-CsZnXQ1y.js"></script>
+  <link rel="stylesheet" crossorigin href="/skk-webeditor/assets/index-B1XQqY21.css">
 </head>
 <body>
 <div id="app">
@@ -63,6 +63,12 @@
   <details id="debug-panel">
     <summary id="debug-summary">▶ AIデバッグ</summary>
     <pre id="debug-info"></pre>
+  </details>
+
+  <!-- Mobile console (collapsible) -->
+  <details id="console-panel">
+    <summary>▶ コンソール <button id="btn-console-clear" onclick="event.preventDefault();event.stopPropagation();">クリア</button></summary>
+    <div id="console-log"></div>
   </details>
 
 </div>
