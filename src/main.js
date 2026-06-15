@@ -4,6 +4,43 @@ import { SKKEngine } from './skk-engine.js';
 import { Dictionary, parseSKKJisyo, parseSKKJisyoUTF8 } from './dictionary.js';
 import { AIReranker } from './ai-reranker.js';
 
+// ── Mobile console ────────────────────────────────────────────────
+
+function appendLog(level, text) {
+  const el = document.getElementById('console-log');
+  if (!el) return;
+
+  const line = document.createElement('div');
+  line.className = `console-line console-${level}`;
+  const time = new Date().toTimeString().slice(0, 8);
+  line.textContent = `[${time}] ${text}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+
+  while (el.children.length > 300) el.removeChild(el.firstChild);
+}
+
+function setupMobileConsole() {
+  // Mirror console methods to on-screen panel
+  for (const level of ['log', 'warn', 'error', 'info']) {
+    const orig = console[level].bind(console);
+    console[level] = (...args) => {
+      orig(...args);
+      appendLog(level, args.map(a =>
+        a === null ? 'null'
+        : typeof a === 'object' ? (() => { try { return JSON.stringify(a); } catch { return String(a); } })()
+        : String(a)
+      ).join(' '));
+    };
+  }
+
+  const btn = document.getElementById('btn-console-clear');
+  if (btn) btn.addEventListener('click', () => {
+    const el = document.getElementById('console-log');
+    if (el) el.innerHTML = '';
+  });
+}
+
 let engine = null;
 let dict = null;
 let aiReranker = null;
@@ -144,11 +181,14 @@ function updateCapsLockUI() {
 // ── Initialisation ────────────────────────────────────────────────
 
 function init() {
+  setupMobileConsole();
+
   dict = new Dictionary();
   engine = new SKKEngine(dict);
   engine.onChange = render;
 
   aiReranker = new AIReranker();
+  aiReranker.onLog = (level, text) => appendLog(level, text);
   aiReranker.init();
 
   loadBottomOffset();

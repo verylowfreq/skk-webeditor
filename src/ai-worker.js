@@ -1,68 +1,117 @@
 // Web Worker: loads Transformers.js and runs AI reranking off the main thread.
-// Receives { type: "rerank", id, payload } messages, replies with results.
 
-import { pipeline } from '@huggingface/transformers';
+import { AutoTokenizer, AutoModel } from '@huggingface/transformers';
 
 const MODEL_ID = 'cfsdwe/static-embedding-japanese-ONNX-for-js';
-let embedderPromise = null;
+let loadedTokenizer = null;
+let loadedModel = null;
 
-async function detectDevice() {
-  if (typeof navigator !== 'undefined' && navigator.gpu) {
-    try {
-      const adapter = await navigator.gpu.requestAdapter();
-      if (adapter) return 'webgpu';
-    } catch (e) {
-      // WebGPU not available
-    }
-  }
-  return 'wasm';
+function wlog(level, ...args) {
+  const text = args.map(a =>
+    a === null ? 'null'
+    : typeof a === 'object' ? JSON.stringify(a)
+    : String(a)
+  ).join(' ');
+  self.postMessage({ type: 'log', level, text });
 }
 
-async function loadEmbedder() {
-  if (embedderPromise) return embedderPromise;
+async function loadModel() {
+  if (loadedTokenizer && loadedModel) return { tokenizer: loadedTokenizer, model: loadedModel };
 
-  embedderPromise = (async () => {
-    // Start with WASM for stability; WebGPU can be enabled after validation
-    const device = await detectDevice();
-    try {
-      const emb = await pipeline('feature-extraction', MODEL_ID, {
-        dtype: 'q8',
-        device,
-      });
-      self.postMessage({ type: 'ready' });
-      return emb;
-    } catch (err) {
-      if (device === 'webgpu') {
-        console.warn('[ai-worker] WebGPU failed, retrying with WASM:', err);
-        const emb = await pipeline('feature-extraction', MODEL_ID, {
-          dtype: 'q8',
-          device: 'wasm',
-        });
-        self.postMessage({ type: 'ready' });
-        return emb;
-      }
-      throw err;
-    }
-  })().catch(err => {
-    embedderPromise = null;
-    self.postMessage({ type: 'error', error: err.message });
-    throw err;
+  const t0 = Date.now();
+  wlog('log', 'モデルロード開始...');
+
+  loadedTokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
+  wlog('log', 'トークナイザ完了');
+
+  try {
+    loadedModel = await AutoModel.from_pretrained(MODEL_ID, { dtype: 'q8' });
+    wlog('log', `モデルロード完了 q8 (${Date.now() - t0}ms)`);
+  } catch (e) {
+    wlog('warn', `q8失敗 → fp32フォールバック: ${e.message}`);
+    loadedModel = await AutoModel.from_pretrained(MODEL_ID);
+    wlog('log', `モデルロード完了 fp32 (${Date.now() - t0}ms)`);
+  }
+
+  self.postMessage({ type: 'ready' });
+  return { tokenizer: loadedTokenizer, model: loadedModel };
+}
+
+async function embedTexts(texts) {
+  const { tokenizer, model } = await loadModel();
+
+  const inputs = await tokenizer(texts, {
+    padding: true,
+    truncation: true,
+    max_length: 64,
   });
 
-  return embedderPromise;
+  const outputs = await model(inputs);
+
+  const keys = Object.keys(outputs);
+  wlog('log', '出力keys:', keys.join(', '));
+
+  // StaticEmbedding outputs sentence_embedding [batch, hidden] directly.
+  // Fall back to last_hidden_state [batch, seq, hidden] if needed.
+  const raw = outputs.sentence_embedding
+    ?? outputs.sentence_embeddings
+    ?? outputs.last_hidden_state
+    ?? outputs.logits
+    ?? (keys.length > 0 ? outputs[keys[0]] : null);
+
+  if (!raw) throw new Error('出力テンソルが見つかりません: ' + keys.join(', '));
+
+  wlog('log', 'テンソルshape:', (raw.dims ?? []).join('x'));
+
+  if (raw.dims.length === 2) {
+    // [batch, hidden] — already pooled
+    return extractFrom2D(raw, texts.length);
+  } else if (raw.dims.length === 3) {
+    // [batch, seq, hidden] — apply mean pooling
+    return meanPool(raw, inputs.attention_mask, texts.length);
+  } else {
+    throw new Error('未対応shape: ' + raw.dims.join('x'));
+  }
 }
 
-// Extract 2D float array from pipeline output tensor
-function extractEmbeddings(tensor, count) {
+function extractFrom2D(tensor, batchSize) {
   const hiddenSize = tensor.dims[1];
-  const embeddings = [];
-  for (let i = 0; i < count; i++) {
-    embeddings.push(Array.from(tensor.data.subarray(i * hiddenSize, (i + 1) * hiddenSize)));
-  }
-  return embeddings;
+  const flat = tensor.data;
+  return Array.from({ length: batchSize }, (_, i) => {
+    const start = i * hiddenSize;
+    const slice = flat.subarray ? flat.subarray(start, start + hiddenSize) : flat.slice(start, start + hiddenSize);
+    return normalizeVec(Array.from(slice));
+  });
+}
+
+function meanPool(tensor, attentionMask, batchSize) {
+  const [, seq, hidden] = tensor.dims;
+  const tokenData = tensor.data;
+  const maskData = attentionMask.data;
+
+  return Array.from({ length: batchSize }, (_, i) => {
+    const emb = new Float32Array(hidden);
+    let count = 0;
+    for (let j = 0; j < seq; j++) {
+      if (maskData[i * seq + j] === 0) continue;
+      count++;
+      const offset = (i * seq + j) * hidden;
+      for (let k = 0; k < hidden; k++) emb[k] += tokenData[offset + k];
+    }
+    if (count > 0) for (let k = 0; k < hidden; k++) emb[k] /= count;
+    return normalizeVec(Array.from(emb));
+  });
+}
+
+function normalizeVec(v) {
+  let sq = 0;
+  for (const x of v) sq += x * x;
+  const n = Math.sqrt(sq);
+  return n > 0 ? v.map(x => x / n) : v;
 }
 
 function cosine(a, b) {
+  if (!a.length || !b.length) return 0;
   let dot = 0, na = 0, nb = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
@@ -82,26 +131,20 @@ function shapeScore(candidate) {
 }
 
 function makeCandidateWindow({ left, candidate, okuriKana, right }) {
-  const l = left.slice(-12);
-  const r = right.slice(0, 12);
-  return `${l}${candidate}${okuriKana || ''}${r}`;
+  return `${left.slice(-12)}${candidate}${okuriKana || ''}${right.slice(0, 12)}`;
 }
 
 async function rerank(payload) {
   const { candidates, left, right, okuriKana } = payload;
   const t0 = Date.now();
 
-  const embedder = await loadEmbedder();
+  wlog('log', `リランク開始: ${candidates.slice(0, 5).join('/')} | 左="${left.slice(-8)}" 右="${right.slice(0, 8)}"`);
 
-  const windows = candidates.map(candidate =>
-    makeCandidateWindow({ left, candidate, okuriKana, right })
-  );
-
+  const windows = candidates.map(c => makeCandidateWindow({ left, candidate: c, okuriKana, right }));
   const contextText = `${left.slice(-12)}${right.slice(0, 12)}` || left.slice(-24) || '日本語';
   const texts = [...windows, contextText];
 
-  const output = await embedder(texts, { pooling: 'mean', normalize: true });
-  const embeddings = extractEmbeddings(output, texts.length);
+  const embeddings = await embedTexts(texts);
   const contextEmbedding = embeddings[embeddings.length - 1];
 
   const scored = candidates.map((candidate, index) => {
@@ -115,15 +158,11 @@ async function rerank(payload) {
   scored.sort((a, b) => b.score - a.score);
 
   const timeMs = Date.now() - t0;
+  wlog('log', `完了 ${timeMs}ms: ${scored.map(s => s.candidate).join(' > ')}`);
 
   return {
     ranked: scored.map(x => x.candidate),
-    debug: {
-      modelId: MODEL_ID,
-      timeMs,
-      strategy: 'local-window',
-      scores: scored,
-    },
+    debug: { modelId: MODEL_ID, timeMs, strategy: 'local-window', scores: scored },
   };
 }
 
@@ -135,9 +174,10 @@ self.onmessage = async (event) => {
     const result = await rerank(payload);
     self.postMessage({ id, ok: true, result });
   } catch (err) {
+    wlog('error', 'リランクエラー:', err.message);
     self.postMessage({ id, ok: false, error: err.message });
   }
 };
 
-// Pre-warm: start model loading immediately when worker starts
-loadEmbedder().catch(() => {});
+// Pre-warm
+loadModel().catch(e => wlog('error', 'モデルロードエラー:', e.message));

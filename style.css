@@ -342,3 +342,51 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
   overflow-y: auto;
   scrollbar-width: thin;
 }
+
+/* ── Mobile console panel ─────────────────────────────────────────── */
+#console-panel {
+  flex-shrink: 0;
+  background: #0a0a14;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+#console-panel > summary {
+  cursor: pointer;
+  padding: 3px 8px;
+  color: var(--text-dim);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#console-panel > summary::-webkit-details-marker { display: none; }
+#console-panel[open] > summary { color: #adf; }
+
+#console-panel > summary button {
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: auto;
+}
+
+#console-log {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px 8px 6px;
+  scrollbar-width: thin;
+}
+
+.console-line {
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.4;
+  color: #9ab;
+}
+
+.console-warn  { color: #fb8; }
+.console-error { color: #f66; }
+.console-info  { color: #8df; }

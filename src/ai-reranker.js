@@ -1,5 +1,4 @@
 // Main-thread wrapper for the AI reranker Web Worker.
-// Sends rerank requests to the worker and returns results as promises.
 
 export class AIReranker {
   constructor() {
@@ -8,6 +7,7 @@ export class AIReranker {
     this._pending = new Map();
     this._ready = false;
     this._initError = null;
+    this.onLog = null; // callback(level, text)
   }
 
   init() {
@@ -17,21 +17,23 @@ export class AIReranker {
       });
 
       this._worker.onmessage = (event) => {
-        const { type, id, ok, result, error } = event.data;
+        const { type, id, ok, result, error, level, text } = event.data;
+
+        if (type === 'log') {
+          if (this.onLog) this.onLog(level ?? 'log', text ?? '');
+          return;
+        }
 
         if (type === 'ready') {
           this._ready = true;
-          console.log('[AIReranker] worker ready');
+          if (this.onLog) this.onLog('log', '[AIReranker] worker ready');
           return;
         }
 
         if (type === 'error' && !id) {
           this._initError = error;
-          console.warn('[AIReranker] worker init error:', error);
-          // Reject all pending
-          for (const [, item] of this._pending) {
-            item.reject(new Error(error));
-          }
+          if (this.onLog) this.onLog('error', '[AIReranker] init error: ' + error);
+          for (const [, item] of this._pending) item.reject(new Error(error));
           this._pending.clear();
           return;
         }
@@ -39,25 +41,19 @@ export class AIReranker {
         const item = this._pending.get(id);
         if (!item) return;
         this._pending.delete(id);
-
-        if (ok) {
-          item.resolve(result);
-        } else {
-          item.reject(new Error(error || 'AI rerank failed'));
-        }
+        if (ok) item.resolve(result);
+        else item.reject(new Error(error || 'AI rerank failed'));
       };
 
       this._worker.onerror = (e) => {
-        console.warn('[AIReranker] worker error:', e.message);
         this._initError = e.message;
-        for (const [, item] of this._pending) {
-          item.reject(new Error(e.message));
-        }
+        if (this.onLog) this.onLog('error', '[AIReranker] worker error: ' + e.message);
+        for (const [, item] of this._pending) item.reject(new Error(e.message));
         this._pending.clear();
       };
     } catch (e) {
-      console.warn('[AIReranker] failed to create worker:', e);
       this._initError = e.message;
+      if (this.onLog) this.onLog('error', '[AIReranker] worker 作成失敗: ' + e.message);
     }
   }
 
@@ -69,7 +65,6 @@ export class AIReranker {
     if (!this._worker || this._initError) {
       return Promise.reject(new Error('AI worker not available'));
     }
-
     const id = this._nextId++;
     return new Promise((resolve, reject) => {
       this._pending.set(id, { resolve, reject });
@@ -79,7 +74,6 @@ export class AIReranker {
 
   rerankWithTimeout(payload) {
     const timeoutMs = payload.timeoutMs ?? 300;
-
     return Promise.race([
       this.rerank(payload),
       new Promise((_, reject) =>
