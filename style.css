@@ -1,0 +1,255 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --surface2: #0f3460;
+  --accent: #e94560;
+  --accent2: #533483;
+  --text: #eaeaea;
+  --text-dim: #888;
+  --border: #2a2a4a;
+  --cand-bg: #1e1e3a;
+  --cand-sel: #e94560;
+  --input-bg: #0f1b35;
+  --font: 'Noto Sans JP', 'Hiragino Kana', 'Yu Gothic', sans-serif;
+  --mono: 'Consolas', 'Courier New', monospace;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+#header {
+  flex-shrink: 0;
+  background: var(--surface2);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+#header-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+
+.btn-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  padding: 4px 10px;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+button:active {
+  background: var(--surface2);
+}
+
+.btn-accent {
+  background: var(--accent2);
+  border-color: var(--accent);
+}
+
+/* ── Dict status bar ─────────────────────────────────────────────── */
+#dict-status-bar {
+  flex-shrink: 0;
+  background: var(--surface);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#dict-progress-wrap {
+  flex: 1;
+}
+
+progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  appearance: none;
+}
+progress::-webkit-progress-bar { background: var(--border); border-radius: 3px; }
+progress::-webkit-progress-value { background: var(--accent); border-radius: 3px; }
+progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
+
+/* ── Confirmed text area ─────────────────────────────────────────── */
+#confirmed-text {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  font-size: 18px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg);
+  color: var(--text);
+  cursor: text;
+  -webkit-overflow-scrolling: touch;
+}
+
+#confirmed-text:empty::before {
+  content: 'ここに確定テキストが表示されます';
+  color: var(--text-dim);
+  font-size: 15px;
+}
+
+/* ── Candidates row ──────────────────────────────────────────────── */
+#candidates-row {
+  flex-shrink: 0;
+  background: var(--cand-bg);
+  border-top: 1px solid var(--border);
+  padding: 4px 6px;
+  display: none; /* shown when converting */
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+#candidates-row::-webkit-scrollbar { height: 4px; }
+#candidates-row::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.cand-btn {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.cand-btn.selected {
+  background: var(--cand-sel);
+  border-color: var(--cand-sel);
+  color: #fff;
+}
+
+/* ── Input area (composition line) ──────────────────────────────── */
+#input-area {
+  flex-shrink: 0;
+  background: var(--input-bg);
+  border-top: 2px solid var(--accent2);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  cursor: text;
+}
+
+#mode-label {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--accent);
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  min-width: 28px;
+  text-align: center;
+  border: 1px solid var(--accent);
+}
+
+#composition-text {
+  flex: 1;
+  font-size: 18px;
+  color: var(--text);
+  min-height: 1.4em;
+  word-break: break-all;
+}
+
+#composition-text:empty::before {
+  content: 'タップして入力 (Ctrl+J でかなモード)';
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+#btn-mode {
+  flex-shrink: 0;
+  background: var(--accent2);
+  border-color: var(--accent);
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+/* Hidden input to capture keyboard events */
+#hidden-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  top: 0;
+  left: 0;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Scrollbars (desktop) ─────────────────────────────────────────── */
+#confirmed-text::-webkit-scrollbar { width: 6px; }
+#confirmed-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

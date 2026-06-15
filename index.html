@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SKK Web Editor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="header-title">SKK Web Editor</span>
+    </div>
+    <div class="btn-row">
+      <button id="btn-save">保存</button>
+      <button id="btn-load">読込</button>
+      <button id="btn-download">DL</button>
+      <button id="btn-clear">消去</button>
+      <button id="btn-dict-load" class="btn-accent">辞書追加</button>
+      <button id="btn-dict-refresh">辞書↺</button>
+    </div>
+  </div>
+
+  <!-- Dictionary status -->
+  <div id="dict-status-bar">
+    <span id="dict-status">辞書を初期化中…</span>
+    <div id="dict-progress-wrap" style="display:none;flex:1;">
+      <progress id="dict-progress" max="100"></progress>
+    </div>
+  </div>
+
+  <!-- Confirmed text display area -->
+  <div id="confirmed-text" role="textbox" aria-readonly="true" aria-label="確定済みテキスト"></div>
+
+  <!-- Candidates row (shown only in ▼mode) -->
+  <div id="candidates-row" role="listbox" aria-label="変換候補">
+    <div id="candidates-list" style="display:flex;gap:4px;flex-shrink:0;"></div>
+  </div>
+
+  <!-- Input line -->
+  <div id="input-area" role="textbox" aria-label="入力行">
+    <span id="mode-label" title="入力モード">A</span>
+    <span id="composition-text"></span>
+    <button id="btn-mode" title="モード切替">モード</button>
+  </div>
+
+</div>
+
+<!-- Hidden file input for dictionary loading -->
+<input type="file" id="dict-file-input" accept=".L,.l,.txt,text/plain" style="display:none">
+
+<!-- Hidden textarea to capture keyboard input -->
+<input type="text" id="hidden-input" autocomplete="off" autocorrect="off"
+       autocapitalize="none" spellcheck="false"
+       inputmode="latin" aria-hidden="true" tabindex="-1">
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script src="js/roman-kana.js"></script>
+<script src="js/dictionary.js"></script>
+<script src="js/skk-engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
