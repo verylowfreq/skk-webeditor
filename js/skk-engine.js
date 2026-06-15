@@ -8,6 +8,12 @@ const MODE = {
   CONVERTING: 'converting', // ▼mode
 };
 
+// Punctuation converted to full-width Japanese equivalents while in kana mode.
+const KANA_PUNCT = {
+  '.': '。', ',': '、', '/': '・', '[': '「', ']': '」',
+  '!': '！', '?': '？', '~': '〜',
+};
+
 class SKKEngine {
   constructor(dictionary) {
     this._dict = dictionary;
@@ -27,6 +33,16 @@ class SKKEngine {
   get mode() { return this._mode; }
   get candidates() { return this._candidates; }
   get candidateIdx() { return this._candidateIdx; }
+
+  // Roman-kana buffer still waiting for more input (e.g. "k" before a vowel)
+  get pendingRoman() { return this._conv.pending; }
+
+  // True when the engine owns the keystrokes (preedit/convert, or mid-romaji in kana mode)
+  get isComposing() {
+    return this._mode === MODE.PREEDITING ||
+           this._mode === MODE.CONVERTING ||
+           this._conv.pending.length > 0;
+  }
 
   get modeLabel() {
     switch (this._mode) {
@@ -89,7 +105,10 @@ class SKKEngine {
   // ── ASCII mode ───────────────────────────────────────────────────
   _handleAscii(key, shift, ctrl) {
     if (key === 'Enter') {
-      return { commit: null };
+      return { commit: '\n' };
+    }
+    if (key === 'Backspace') {
+      return { commit: null, backspace: true };
     }
     // Output character as-is
     const ch = shift ? key.toUpperCase() : key;
@@ -178,10 +197,11 @@ class SKKEngine {
 
   _feedRoman(ch) {
     const result = this._conv.feed(ch);
-    let commit = null;
-    if (result.kana) {
-      commit = this._applyKana(result.kana);
-    }
+    let commit = '';
+    if (result.kana) commit += this._applyKana(result.kana);
+    // Single character with no roman-kana mapping (e.g. punctuation, digits):
+    // emit it directly instead of silently dropping it.
+    if (result.unmatched) commit += KANA_PUNCT[result.unmatched] || result.unmatched;
     this._notify();
     return { commit: commit || null };
   }
@@ -294,28 +314,26 @@ class SKKEngine {
   }
 
   _startConversion() {
-    // Build dictionary lookup key
+    // Build dictionary lookup key.
+    // Okuri-ari entries in SKK-JISYO are keyed by the reading plus the *romaji*
+    // consonant of the okurigana (e.g. おくる → key "おくr", candidate "送").
+    // The okurigana kana itself is appended separately at commit time, so the
+    // lookup must NOT include it — otherwise we'd hit an okuri-nashi entry whose
+    // candidate already contains the okurigana and end up doubling it.
     let lookupKey = this._reading;
     if (this._okuriKana) {
-      // Okuri-ari: key is reading + first kana of okurigana (in hiragana)
-      lookupKey = this._reading + this._okuriKana[0];
+      lookupKey = this._reading + this._okuriRoman[0];
     }
 
     this._candidates = this._dict.lookup(lookupKey);
 
-    if (this._candidates.length === 0 && this._okuriKana) {
-      // Try without okurigana key
-      this._candidates = this._dict.lookup(this._reading);
-    }
-
     if (this._candidates.length === 0) {
-      // No candidates: stay in preediting (or just commit reading)
-      this._mode = MODE.CONVERTING;
+      // No dictionary hit: fall back to the bare reading so the user can still
+      // commit the kana (kanji conversion simply isn't available).
       this._candidates = [this._isKatakana ? hiraToKata(this._reading) : this._reading];
-    } else {
-      this._mode = MODE.CONVERTING;
     }
 
+    this._mode = MODE.CONVERTING;
     this._candidateIdx = 0;
     this._notify();
     return { commit: null };

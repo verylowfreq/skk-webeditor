@@ -113,23 +113,24 @@ progress::-webkit-progress-bar { background: var(--border); border-radius: 3px; 
 progress::-webkit-progress-value { background: var(--accent); border-radius: 3px; }
 progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 
-/* ── Confirmed text area ─────────────────────────────────────────── */
+/* ── Confirmed text editor (textarea) ────────────────────────────── */
 #confirmed-text {
   flex: 1;
-  overflow-y: auto;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
   padding: 12px;
+  font-family: var(--font);
   font-size: 18px;
   line-height: 1.8;
-  white-space: pre-wrap;
-  word-break: break-all;
   background: var(--bg);
   color: var(--text);
-  cursor: text;
+  caret-color: var(--accent);
   -webkit-overflow-scrolling: touch;
 }
 
-#confirmed-text:empty::before {
-  content: 'ここに確定テキストが表示されます';
+#confirmed-text::placeholder {
   color: var(--text-dim);
   font-size: 15px;
 }
@@ -214,17 +215,6 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
   border-color: var(--accent);
   font-size: 12px;
   padding: 4px 8px;
-}
-
-/* Hidden input — off-screen but real so mobile BT keyboards work */
-#hidden-input {
-  position: fixed;
-  left: -9999px;
-  top: 50%;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* ── Toast ────────────────────────────────────────────────────────── */

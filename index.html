@@ -35,8 +35,11 @@
     </div>
   </div>
 
-  <!-- Confirmed text display area -->
-  <div id="confirmed-text" role="textbox" aria-readonly="true" aria-label="確定済みテキスト"></div>
+  <!-- Confirmed text editor (real textarea: native caret / selection / scroll) -->
+  <textarea id="confirmed-text" autocomplete="off" autocorrect="off"
+            autocapitalize="none" spellcheck="false"
+            placeholder="ここにテキストを入力 (Ctrl+J でかなモード)"
+            aria-label="確定済みテキスト"></textarea>
 
   <!-- Candidates row (shown only in ▼mode) -->
   <div id="candidates-row" role="listbox" aria-label="変換候補">
@@ -54,11 +57,6 @@
 
 <!-- Hidden file input for dictionary loading -->
 <input type="file" id="dict-file-input" accept=".L,.l,.txt,text/plain" style="display:none">
-
-<!-- Hidden textarea to capture keyboard input -->
-<input type="text" id="hidden-input" autocomplete="off" autocorrect="off"
-       autocapitalize="none" spellcheck="false"
-       aria-hidden="true">
 
 <!-- Toast notification -->
 <div id="toast"></div>
