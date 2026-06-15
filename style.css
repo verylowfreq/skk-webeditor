@@ -294,3 +294,51 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
 /* ── Scrollbars (desktop) ─────────────────────────────────────────── */
 #confirmed-text::-webkit-scrollbar { width: 6px; }
 #confirmed-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── AI badge ─────────────────────────────────────────────────────── */
+#ai-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: bold;
+  color: #7bf;
+  border: 1px solid #7bf;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  letter-spacing: 0.05em;
+}
+
+/* ── AI debug panel ───────────────────────────────────────────────── */
+#debug-panel {
+  flex-shrink: 0;
+  background: #111827;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+#debug-panel > summary {
+  cursor: pointer;
+  padding: 3px 8px;
+  color: var(--text-dim);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+}
+
+#debug-panel > summary::-webkit-details-marker { display: none; }
+
+#debug-panel[open] > summary { color: #7bf; }
+
+#debug-info {
+  color: #8f8;
+  margin: 0;
+  padding: 4px 10px 6px;
+  white-space: pre;
+  font-size: 10px;
+  overflow-x: auto;
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
